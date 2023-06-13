@@ -1,16 +1,22 @@
-#define MOTOR_LEFT_0 8
-#define MOTOR_LEFT_1 9
-#define MOTOR_RIGHT_0 10
-#define MOTOR_RIGHT_1 11
+#define MOTOR_LEFT_0 9
+#define MOTOR_LEFT_1 8
+#define MOTOR_RIGHT_0 11
+#define MOTOR_RIGHT_1 10
 
 #define LINE_LEFT 3
 #define LINE_RIGHT 4
 
 #define WALL_TRIGGER 2
 
-#define WALL_LEFT 6
-#define WALL_CENTER 5
-#define WALL_RIGHT 7
+#define WALL_LEFT 7
+#define WALL_CENTER 6
+#define WALL_RIGHT 5
+
+#define MAX_WIGGLE 20
+#define WALL_DISTENCE 15
+
+#define MIN_SPEED 0
+#define MAX_SPEED 180
 
 long left_duration;
 long center_duration;
@@ -26,6 +32,15 @@ enum Direction {
   Left,
   Right,
 };
+
+enum Mode {
+  Line,
+  Wall,
+};
+
+Mode mode = Line;
+
+byte wiggle = MAX_WIGGLE;
 
 void setup() {
   pinMode(MOTOR_LEFT_0, OUTPUT);
@@ -46,8 +61,12 @@ void setup() {
 }
 
 void loop() {
-  //line_mode();
-  wall_mode();
+  if (mode == Line) {
+    line_mode();
+  } else if (mode == Wall) {
+    wall_mode();
+  }
+  //move(Forward);
 }
 
 void trigger() {
@@ -81,30 +100,57 @@ void wall_mode() {
   Serial.print("\n");
 
   if(left_cm > 15 && center_cm < 15 && right_cm < 15){
-    move(Stop);
-    move(Left);
+    while (true) {
+      delay(50);
+      move(Stop);
+      move(Right);
+      if(left_cm > 15 && center_cm < 15 && right_cm < 15){
+        break;
+      }
+    }
+    
   } else if(left_cm < 15 && center_cm < 15 && right_cm > 15) {
-    move(Stop);
-    move(Right);
+    while (true) {
+      delay(50);
+      move(Stop);
+      move(Left);
+      if(left_cm < 15 && center_cm < 15 && right_cm > 15){
+        break;
+      }
+    }
   } else if(center_cm > 15) {
     move(Forward);
   } else {
     move(Stop);
   }
 
-  delay(500);
+  delay(400);
 
   move(Stop);
   
 }
 
 void line_mode() {
+  if ((digitalRead(LINE_LEFT) != 1) || (digitalRead(LINE_RIGHT) != 1)) {
+        wiggle = MAX_WIGGLE;
+  }
+
   if( (digitalRead(LINE_LEFT) == 0) && (digitalRead(LINE_RIGHT) == 0) ){
     move(Forward);
   } else if ( (digitalRead(LINE_LEFT) == 0) && (digitalRead(LINE_RIGHT) == 1) ) {
     move(Left);
   } else if ( (digitalRead(LINE_LEFT) == 1) && (digitalRead(LINE_RIGHT) == 0) ) {
     move(Right);
+  } else if ((digitalRead(LINE_LEFT) == 1) && (digitalRead(LINE_RIGHT) == 1)) {
+    move(Stop);
+    if (wiggle > 0) {
+      wiggle -= 1;
+      delay(10);
+    } else {
+      mode = Wall;
+    }
+
+
   } else {
     move(Stop);
   }
@@ -113,34 +159,34 @@ void line_mode() {
 void move(Direction dir) {
   switch (dir) {
     case Forward:
-      digitalWrite(MOTOR_LEFT_0, false);
-      digitalWrite(MOTOR_RIGHT_0, false);
-      digitalWrite(MOTOR_LEFT_1, true);
-      digitalWrite(MOTOR_RIGHT_1, true);
+      analogWrite(MOTOR_LEFT_0, MIN_SPEED);
+      analogWrite(MOTOR_RIGHT_0, MIN_SPEED);
+      analogWrite(MOTOR_LEFT_1, MAX_SPEED);
+      analogWrite(MOTOR_RIGHT_1, MAX_SPEED);
       break;
     case Backword:
-      digitalWrite(MOTOR_LEFT_0, true);
-      digitalWrite(MOTOR_RIGHT_0, true);
-      digitalWrite(MOTOR_LEFT_1, false);
-      digitalWrite(MOTOR_RIGHT_1, false);
+      analogWrite(MOTOR_LEFT_0, MAX_SPEED);
+      analogWrite(MOTOR_RIGHT_0, MAX_SPEED);
+      analogWrite(MOTOR_LEFT_1, MIN_SPEED);
+      analogWrite(MOTOR_RIGHT_1, MIN_SPEED);
       break;
     case Left:
-      digitalWrite(MOTOR_LEFT_0, true);
-      digitalWrite(MOTOR_RIGHT_0, false);
-      digitalWrite(MOTOR_LEFT_1, false);
-      digitalWrite(MOTOR_RIGHT_1, true);
+      analogWrite(MOTOR_LEFT_0, MAX_SPEED);
+      analogWrite(MOTOR_RIGHT_0, MIN_SPEED);
+      analogWrite(MOTOR_LEFT_1, MIN_SPEED);
+      analogWrite(MOTOR_RIGHT_1, MAX_SPEED);
       break;
     case Right:
-      digitalWrite(MOTOR_LEFT_0, false);
-      digitalWrite(MOTOR_RIGHT_0, true);
-      digitalWrite(MOTOR_LEFT_1, true);
-      digitalWrite(MOTOR_RIGHT_1, false);
+      analogWrite(MOTOR_LEFT_0, MIN_SPEED);
+      analogWrite(MOTOR_RIGHT_0, MAX_SPEED);
+      analogWrite(MOTOR_LEFT_1, MAX_SPEED);
+      analogWrite(MOTOR_RIGHT_1, MIN_SPEED);
       break;
     case Stop:
-      digitalWrite(MOTOR_LEFT_0, false);
-      digitalWrite(MOTOR_RIGHT_0, false);
-      digitalWrite(MOTOR_LEFT_1, false);
-      digitalWrite(MOTOR_RIGHT_1, false);
+      analogWrite(MOTOR_LEFT_0, MIN_SPEED);
+      analogWrite(MOTOR_RIGHT_0, MIN_SPEED);
+      analogWrite(MOTOR_LEFT_1, MIN_SPEED);
+      analogWrite(MOTOR_RIGHT_1, MIN_SPEED);
       break;
   }
 }
